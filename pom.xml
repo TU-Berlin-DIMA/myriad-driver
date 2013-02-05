@@ -1,8 +1,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   
-  <groupId>de.tuberlin.dima.myriad</groupId>
-  <artifactId>myriad-hadoop</artifactId>
+  <groupId>eu.stratosphere</groupId>
+  <artifactId>myriad-driver</artifactId>
   <version>0.2.1</version>
   <packaging>jar</packaging>
   
@@ -33,7 +33,7 @@
           <appendAssemblyId>true</appendAssemblyId>
           <archive>
             <manifest>
-              <mainClass>de.tuberlin.dima.myriad.Frontend</mainClass>
+              <mainClass>eu.stratosphere.myriad.driver.MyriadDriverFrontend</mainClass>
             </manifest>
           </archive>
           <descriptors>
@@ -63,14 +63,13 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-core</artifactId>
-      <version>0.20.205.0</version>
+      <version>0.20.203.0</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.martiansoftware</groupId>
       <artifactId>jsap</artifactId>
       <version>2.1</version>
-      <scope>compile</scope>
     </dependency>
   </dependencies>  
 </project>
