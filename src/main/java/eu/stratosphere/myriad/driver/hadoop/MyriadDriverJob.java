@@ -67,7 +67,6 @@ public class MyriadDriverJob extends Configured {
 		// input format configuration
 		MyriadInputFormat.setDriverJobParameters(conf, this.parameters);
 		// output format configuration
-		System.out.println(this.parameters.getJobOutputPath());
 		FileOutputFormat.setOutputPath(conf, new Path(this.parameters.getJobOutputPath()));
 
 		return conf;

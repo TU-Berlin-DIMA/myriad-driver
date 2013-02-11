@@ -38,6 +38,8 @@ import eu.stratosphere.myriad.driver.parameters.SocketReaderParameters;
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
  */
 public class MyriadSocketReader {
+	
+	private static int BUFFER_SIZE = 65536; // 64K buffer 
 
 	private final String nodePath;
 
@@ -86,10 +88,9 @@ public class MyriadSocketReader {
 		this.nodeCount = parameters.getNodeCount();
 		this.nodeID = parameters.getNodeID();
 		// compute derived parameters
-		this.serverSocketPort = getOutputSocketPort();
+		this.serverSocketPort = 43000 + this.nodeID % 1000; // getOutputSocketPort();
 		this.heartBeatServerPort = 42000 + this.nodeID % 1000;
 
-		System.out.println("open SocketReader server at input socket number");
 		// open SocketReader server at input socket number
 		try {
 			this.serverSocket = new ServerSocket(this.serverSocketPort);
@@ -109,7 +110,6 @@ public class MyriadSocketReader {
 				+ this.heartBeatServerPort + ".");
 		}
 
-		System.out.println("start data generator process: " + getDGenCommand());
 		// start data generator process
 		try {
 			this.dgenProcess = Runtime.getRuntime().exec(getDGenCommand());
@@ -118,7 +118,6 @@ public class MyriadSocketReader {
 			throw new RuntimeException("Myriad Data Generator: failed to start data generator process.");
 		}
 
-		System.out.println("create client socket from socket server");
 		// create client socket from socket server
 		try {
 			this.clientSocket = this.serverSocket.accept();
@@ -127,10 +126,9 @@ public class MyriadSocketReader {
 			throw new RuntimeException("Myriad Data Generator: failed to open receiver socket.");
 		}
 
-		System.out.println("create input reader for client socket");
 		// create input reader for client socket
 		try {
-			this.inputReader = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()));
+			this.inputReader = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()), MyriadSocketReader.BUFFER_SIZE);
 		} catch (IOException e) {
 			cleanup();
 			throw new RuntimeException("Myriad Data Generator: failed to open input stream.");
@@ -163,6 +161,7 @@ public class MyriadSocketReader {
 	 * 
 	 */
 	public void close() {
+		cleanup();
 	}
 
 	/**
@@ -232,7 +231,7 @@ public class MyriadSocketReader {
 		sb.append(" -m").append(this.datasetID);
 		sb.append(" -x").append(this.stage);
 		sb.append(" -o").append(this.outputBase);
-		sb.append(" -t").append("socket[" + getOutputSocketPort() + "]");
+		sb.append(" -t").append("socket[" + this.serverSocketPort + "]");
 		sb.append(" -H").append("localhost");
 		sb.append(" -P").append(this.heartBeatServerPort);
 		return sb.toString();
