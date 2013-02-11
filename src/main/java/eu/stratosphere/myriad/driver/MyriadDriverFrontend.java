@@ -157,7 +157,7 @@ public class MyriadDriverFrontend {
 	}
 
 	private void printUsage(PrintStream out) {
-		out.println("Usage: (hadoop|pact-client) -jar " + getJar() + " <dgen-install-dir> [OPTIONS]");
+		out.println("Usage: (hadoop|pact-client) -jar myriad-driver-VERSION-jobs.jar <dgen-install-dir> [OPTIONS]");
 		out.println();
 	}
 

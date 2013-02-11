@@ -21,6 +21,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 
+import eu.stratosphere.myriad.driver.reader.MyriadSocketReader;
+
 /**
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
  */
@@ -35,8 +37,8 @@ public class MyriadRecordReader implements RecordReader<NullWritable, Text> {
 	 * @param split
 	 * @param job
 	 */
-	public MyriadRecordReader(MyriadInputSplit split, JobConf job) {
-		this.socketReader = new MyriadSocketReader(split, job);
+	public MyriadRecordReader(MyriadInputSplit split, JobConf conf) {
+		this.socketReader = new MyriadSocketReader(MyriadInputFormat.getDriverJobParameters(conf, (short) split.getNodeID()));
 	}
 
 	/*
@@ -81,7 +83,12 @@ public class MyriadRecordReader implements RecordReader<NullWritable, Text> {
 	 */
 	@Override
 	public boolean next(NullWritable key, Text value) throws IOException {
-		return this.socketReader.next(value);
+		final String v = this.socketReader.next();
+		if (v == null) {
+			return false;
+		}
+		value.set(v);
+		return true;
 	}
 
 	/*

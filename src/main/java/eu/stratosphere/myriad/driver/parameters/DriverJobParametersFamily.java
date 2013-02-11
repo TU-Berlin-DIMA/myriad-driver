@@ -14,6 +14,7 @@
  **********************************************************************************************************************/
 package eu.stratosphere.myriad.driver.parameters;
 
+import java.io.File;
 import java.util.Iterator;
 
 import com.martiansoftware.jsap.JSAPResult;
@@ -45,7 +46,11 @@ public class DriverJobParametersFamily implements Iterable<DriverJobParameters> 
 
 	private static class DriverJobParametersIterator implements Iterator<DriverJobParameters> {
 
-		private final JSAPResult parsedOptions;
+		private final File dgenInstallDir;
+		private final File outputBase;
+		private final String datasetID;
+		private final double scalingFactor;
+		private final short nodeCount;
 
 		private final String[] stages;
 		
@@ -57,7 +62,11 @@ public class DriverJobParametersFamily implements Iterable<DriverJobParameters> 
 		 * @param parsedOptions
 		 */
 		public DriverJobParametersIterator(JSAPResult parsedOptions) {
-			this.parsedOptions = parsedOptions;
+			this.dgenInstallDir = parsedOptions.getFile("dgen-install-dir").getAbsoluteFile();
+			this.outputBase = parsedOptions.getFile("output-base");
+			this.datasetID = parsedOptions.getString("dataset-id");
+			this.scalingFactor = parsedOptions.getDouble("scaling-factor");
+			this.nodeCount = parsedOptions.getShort("node-count");
 			this.stages = parsedOptions.getStringArray("execute-stage");
 			this.currentStage = 0;
 		}
@@ -77,7 +86,7 @@ public class DriverJobParametersFamily implements Iterable<DriverJobParameters> 
 		 */
 		@Override
 		public DriverJobParameters next() {
-			return new DriverJobParameters(this.parsedOptions, this.stages[this.currentStage++]);
+			return new DriverJobParameters(this.dgenInstallDir, this.outputBase, this.datasetID, this.stages[this.currentStage++], this.scalingFactor, this.nodeCount);
 		}
 
 		/*

@@ -14,6 +14,7 @@
  **********************************************************************************************************************/
 package eu.stratosphere.myriad.driver.hadoop;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.hadoop.io.NullWritable;
@@ -23,6 +24,9 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
+
+import eu.stratosphere.myriad.driver.parameters.DriverJobParameters;
+import eu.stratosphere.myriad.driver.parameters.SocketReaderParameters;
 
 /**
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
@@ -37,7 +41,6 @@ public class MyriadInputFormat implements InputFormat<NullWritable, Text> {
 		// construct splits
 		InputSplit[] splits = new InputSplit[nodeCount];
 		for (int nodeID = 0; nodeID < nodeCount; nodeID++) {
-			System.out.println("creating split");
 			splits[nodeID] = new MyriadInputSplit(nodeID);
 		}
 
@@ -50,11 +53,11 @@ public class MyriadInputFormat implements InputFormat<NullWritable, Text> {
 		return new MyriadRecordReader((MyriadInputSplit) split, job);
 	}
 
-	public static void setDGenNodePath(JobConf conf, String dgenNodePath) {
+	public static void setDGenInstallDir(JobConf conf, String dgenNodePath) {
 		conf.set("mapred.myriad.dgen.node.path", dgenNodePath);
 	}
 
-	public static String getDGenNodePath(JobConf conf) {
+	public static String getDGenInstallDir(JobConf conf) {
 		String nodePath = conf.get("mapred.myriad.dgen.node.path", "");
 		if (nodePath == "") {
 			throw new IllegalArgumentException("Bad `mapred.myriad.dgen.node.path` parameter value");
@@ -120,5 +123,32 @@ public class MyriadInputFormat implements InputFormat<NullWritable, Text> {
 			throw new IllegalArgumentException("Bad `mapred.myriad.dgen.dataset.id` parameter value");
 		}
 		return nodePath;
+	}
+
+	/**
+	 * @param parameters
+	 */
+	public static void setDriverJobParameters(JobConf conf, DriverJobParameters parameters) {
+		MyriadInputFormat.setDGenInstallDir(conf, parameters.getDGenInstallDir().toString());
+		MyriadInputFormat.setOutputBase(conf, parameters.getOutputBase().toString());
+		MyriadInputFormat.setDatasetID(conf, parameters.getDatasetID());
+		MyriadInputFormat.setStage(conf, parameters.getStage());
+		MyriadInputFormat.setScalingFactor(conf, parameters.getScalingFactor());
+		MyriadInputFormat.setNodeCount(conf, parameters.getNodeCount());
+	}
+
+	/**
+	 * @param conf
+	 * @param nodeID
+	 * @return
+	 */
+	public static SocketReaderParameters getDriverJobParameters(JobConf conf, short nodeID) {
+		File dgenInstallDir = new File(MyriadInputFormat.getDGenInstallDir(conf));
+		File outputBase = new File(MyriadInputFormat.getOutputBase(conf));
+		String datasetID = MyriadInputFormat.getDatasetID(conf);
+		String stage = MyriadInputFormat.getStage(conf);
+		double scalingFactor = MyriadInputFormat.getScalingFactor(conf);
+		short nodeCount = (short) MyriadInputFormat.getNodeCount(conf);
+		return new SocketReaderParameters(dgenInstallDir , outputBase, datasetID, stage, scalingFactor, nodeCount, nodeID);
 	}
 }

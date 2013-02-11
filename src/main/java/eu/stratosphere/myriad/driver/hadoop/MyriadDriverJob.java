@@ -50,31 +50,27 @@ public class MyriadDriverJob extends Configured {
 
 	public JobConf createJobConf() {
 		// create job
-		JobConf jobConf = new JobConf(getConf());
+		JobConf conf = new JobConf(getConf());
 
-		jobConf.setJarByClass(MyriadDriverJob.class);
-		jobConf.setJobName(String.format("%s", this.parameters.getDgenName()));
+		conf.setJarByClass(MyriadDriverJob.class);
+		conf.setJobName(String.format("%s", this.parameters.getDGenName()));
 
-		jobConf.setOutputKeyClass(NullWritable.class);
-		jobConf.setOutputValueClass(Text.class);
+		conf.setOutputKeyClass(NullWritable.class);
+		conf.setOutputValueClass(Text.class);
 
-		jobConf.setMapperClass(IdentityMapper.class);
+		conf.setMapperClass(IdentityMapper.class);
+		conf.setNumReduceTasks(0);
 
-		jobConf.setInputFormat(MyriadInputFormat.class);
-		jobConf.setOutputFormat(TextOutputFormat.class);
+		conf.setInputFormat(MyriadInputFormat.class);
+		conf.setOutputFormat(TextOutputFormat.class);
 		
 		// input format configuration
-		MyriadInputFormat.setDGenNodePath(jobConf, this.parameters.getDGenNodePath().toString());
-		MyriadInputFormat.setStage(jobConf, this.parameters.getStage());
-		MyriadInputFormat.setScalingFactor(jobConf, this.parameters.getScalingFactor());
-		MyriadInputFormat.setNodeCount(jobConf, this.parameters.getNodeCount());
-		MyriadInputFormat.setOutputBase(jobConf, this.parameters.getOutputBase().toString());
-		MyriadInputFormat.setDatasetID(jobConf, this.parameters.getDatasetID());
+		MyriadInputFormat.setDriverJobParameters(conf, this.parameters);
 		// output format configuration
 		System.out.println(this.parameters.getJobOutputPath());
-		FileOutputFormat.setOutputPath(jobConf, new Path(this.parameters.getJobOutputPath()));
+		FileOutputFormat.setOutputPath(conf, new Path(this.parameters.getJobOutputPath()));
 
-		return jobConf;
+		return conf;
 	}
 
 	public static class IdentityMapper implements Mapper<NullWritable, Text, NullWritable, Text> {

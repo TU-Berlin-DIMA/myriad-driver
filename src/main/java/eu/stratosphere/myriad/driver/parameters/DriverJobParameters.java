@@ -16,8 +16,6 @@ package eu.stratosphere.myriad.driver.parameters;
 
 import java.io.File;
 
-import com.martiansoftware.jsap.JSAPResult;
-
 /**
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
  */
@@ -39,15 +37,15 @@ public class DriverJobParameters {
 
 	private final short nodeCount;
 
-	public DriverJobParameters(JSAPResult parsedOptions, String stage) throws DriverJobParametersException {
-		this.dgenInstallDir = parsedOptions.getFile("dgen-install-dir").getAbsoluteFile();
+	public DriverJobParameters(File dgenInstallDir, File outputBase, String datasetID, String stage, double scalingFactor, short nodeCount) throws DriverJobParametersException {
+		this.dgenInstallDir = dgenInstallDir;
 		this.dgenName = this.dgenInstallDir.getName();
 		this.dgenNodePath = new File(String.format("%s/bin/%s-node", this.dgenInstallDir, this.dgenName));
-		this.outputBase = parsedOptions.getFile("output-base");
-		this.datasetID = parsedOptions.getString("dataset-id");
+		this.outputBase = outputBase;
+		this.datasetID = datasetID;
 		this.stage = stage;
-		this.scalingFactor = parsedOptions.getDouble("scaling-factor");
-		this.nodeCount = parsedOptions.getShort("node-count");
+		this.scalingFactor = scalingFactor;
+		this.nodeCount = nodeCount;
 
 		validateParameters();
 	}
@@ -66,7 +64,7 @@ public class DriverJobParameters {
 		}
 	}
 
-	public File getDgenInstallDir() {
+	public File getDGenInstallDir() {
 		return this.dgenInstallDir;
 	}
 
@@ -78,7 +76,7 @@ public class DriverJobParameters {
 		return this.outputBase;
 	}
 
-	public String getDgenName() {
+	public String getDGenName() {
 		return this.dgenName;
 	}
 
