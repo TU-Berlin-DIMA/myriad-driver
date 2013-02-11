@@ -46,13 +46,13 @@ public class MyriadSocketReaderTest {
 	}
 
 	@Test
-//	@Ignore("Ignore test with hardcoded external Myriad Data Generator dependency")
+	@Ignore("Ignore test with hardcoded external Myriad Data Generator dependency")
 	public void testSocketReader() throws IOException {
 		this.socketReader = new MyriadSocketReader(this.socketReaderParameters);
 		
 		String line;
 		while ((line = this.socketReader.next()) != null) {
-//			System.out.println(line);
+			System.out.println(line);
 		}
 	}
 }
