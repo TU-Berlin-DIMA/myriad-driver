@@ -18,6 +18,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
@@ -29,30 +30,42 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapred.TextOutputFormat;
 
+import eu.stratosphere.myriad.driver.MyriadDriverJob;
 import eu.stratosphere.myriad.driver.parameters.DriverJobParameters;
 
 /**
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
  */
 @SuppressWarnings("deprecation")
-public class MyriadDriverJob extends Configured {
+public class MyriadDriverHadoopJob extends Configured implements MyriadDriverJob {
 
 	private DriverJobParameters parameters;
 
-	public MyriadDriverJob(DriverJobParameters parameters) {
+	public MyriadDriverHadoopJob(DriverJobParameters parameters) {
 		super(new Configuration());
 		this.parameters = parameters;
 	}
 
+	@Override
 	public void run() throws IOException {
 		JobClient.runJob(this.createJobConf());
 	}
 
-	public JobConf createJobConf() {
+	@Override
+	public void removeOutputPath() throws IOException {
+		FileSystem fs = FileSystem.get(getConf());
+		Path outputPath = new Path(this.parameters.getJobOutputPath());
+
+		if (fs.exists(outputPath)) {
+			fs.delete(outputPath, true);
+		}
+	}
+
+	private JobConf createJobConf() {
 		// create job
 		JobConf conf = new JobConf(getConf());
 
-		conf.setJarByClass(MyriadDriverJob.class);
+		conf.setJarByClass(MyriadDriverHadoopJob.class);
 		conf.setJobName(String.format("%s", this.parameters.getDGenName()));
 
 		conf.setOutputKeyClass(NullWritable.class);
@@ -63,7 +76,7 @@ public class MyriadDriverJob extends Configured {
 
 		conf.setInputFormat(MyriadInputFormat.class);
 		conf.setOutputFormat(TextOutputFormat.class);
-		
+
 		// input format configuration
 		MyriadInputFormat.setDriverJobParameters(conf, this.parameters);
 		// output format configuration
@@ -83,8 +96,8 @@ public class MyriadDriverJob extends Configured {
 		}
 
 		@Override
-		public void map(NullWritable key, Text val, OutputCollector<NullWritable, Text> output, Reporter reporter) throws IOException {
-			output.collect(key, val);
+		public void map(NullWritable k, Text v, OutputCollector<NullWritable, Text> o, Reporter r) throws IOException {
+			o.collect(k, v);
 		}
 	}
 }

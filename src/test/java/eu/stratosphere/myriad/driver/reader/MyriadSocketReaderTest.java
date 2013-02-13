@@ -31,7 +31,7 @@ public class MyriadSocketReaderTest {
 	private SocketReaderParameters socketReaderParameters;
 
 	private MyriadSocketReader socketReader;
-	
+
 	@Before
 	public void setUp() {
 		File dgenInstallDir = new File("/home/alexander/etc/datagen/wordcount-gen");
@@ -41,15 +41,16 @@ public class MyriadSocketReaderTest {
 		double scalingFactor = 1.0;
 		short nodeCount = 1;
 		short nodeID = 0;
-		
-		this.socketReaderParameters = new SocketReaderParameters(dgenInstallDir, outputBase, datasetID, stage, scalingFactor, nodeCount, nodeID);
+
+		this.socketReaderParameters = new SocketReaderParameters(dgenInstallDir, outputBase, datasetID, stage,
+			scalingFactor, nodeCount, nodeID);
 	}
 
 	@Test
 	@Ignore("Ignore test with hardcoded external Myriad Data Generator dependency")
 	public void testSocketReader() throws IOException {
 		this.socketReader = new MyriadSocketReader(this.socketReaderParameters);
-		
+
 		String line;
 		while ((line = this.socketReader.next()) != null) {
 			System.out.println(line);

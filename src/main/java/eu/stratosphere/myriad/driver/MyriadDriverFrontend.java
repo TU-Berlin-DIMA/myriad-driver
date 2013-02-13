@@ -14,13 +14,10 @@
  **********************************************************************************************************************/
 package eu.stratosphere.myriad.driver;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.security.CodeSource;
 import java.util.Iterator;
 
 import com.martiansoftware.jsap.FlaggedOption;
@@ -33,7 +30,7 @@ import com.martiansoftware.jsap.stringparsers.FileStringParser;
 import com.martiansoftware.jsap.stringparsers.ShortStringParser;
 import com.martiansoftware.jsap.stringparsers.StringStringParser;
 
-import eu.stratosphere.myriad.driver.hadoop.MyriadDriverJob;
+import eu.stratosphere.myriad.driver.hadoop.MyriadDriverHadoopJob;
 import eu.stratosphere.myriad.driver.parameters.DriverJobParameters;
 import eu.stratosphere.myriad.driver.parameters.DriverJobParametersException;
 import eu.stratosphere.myriad.driver.parameters.DriverJobParametersFamily;
@@ -131,11 +128,12 @@ public class MyriadDriverFrontend {
 		}
 
 		try {
-			// execute driver job for each 'execute-stage' parameter
-			for (DriverJobParameters parameters : new DriverJobParametersFamily(parsedOptions)) {
-				System.out.println("Running Myriad Data Generator for stage `" + parameters.getStage() + "`");
+			// execute a driver job for each 'execute-stage' parameter
+			for (DriverJobParameters p : new DriverJobParametersFamily(parsedOptions)) {
+				System.out.println(String.format("Running %s for stage `%s`", p.getDGenName(), p.getStage()));
 				// run driver job
-				MyriadDriverJob myriadDriverJob = new MyriadDriverJob(parameters);
+				MyriadDriverJob myriadDriverJob = driverJobFactory(p);
+				myriadDriverJob.removeOutputPath();
 				myriadDriverJob.run();
 			}
 		} catch (DriverJobParametersException e) {
@@ -145,6 +143,14 @@ public class MyriadDriverFrontend {
 			System.out.println("Exception while running Hadoop MapReduce job: " + e.getMessage());
 			e.printStackTrace(System.err);
 		}
+	}
+
+	/**
+	 * @param parameters
+	 * @return
+	 */
+	private MyriadDriverJob driverJobFactory(DriverJobParameters parameters) {
+		return new MyriadDriverHadoopJob(parameters);
 	}
 
 	private void printErrors(PrintStream out, JSAPResult parsedOptions) {
@@ -157,7 +163,7 @@ public class MyriadDriverFrontend {
 	}
 
 	private void printUsage(PrintStream out) {
-		out.println("Usage: (hadoop|pact-client) -jar myriad-driver-VERSION-jobs.jar <dgen-install-dir> [OPTIONS]");
+		out.println("Usage: (hadoop|pact-client) jar myriad-driver-jobs.jar <dgen-install-dir> [OPTIONS]");
 		out.println();
 	}
 
@@ -166,7 +172,6 @@ public class MyriadDriverFrontend {
 	}
 
 	public static void main(String[] args) {
-		
 		MyriadDriverFrontend frontend = new MyriadDriverFrontend();
 
 		try {
@@ -176,17 +181,6 @@ public class MyriadDriverFrontend {
 			frontend.printUsage(System.err);
 			frontend.printHelp(System.err);
 			System.exit(1);
-		}
-	}
-
-	public static String getJar() {
-		try {
-			CodeSource codeSource = MyriadDriverFrontend.class.getProtectionDomain().getCodeSource();
-			File jarFile;
-			jarFile = new File(codeSource.getLocation().toURI().getPath());
-			return jarFile.getName();
-		} catch (URISyntaxException e) {
-			return "<unknown-jar>";
 		}
 	}
 
@@ -202,20 +196,5 @@ public class MyriadDriverFrontend {
 		}
 
 		return classpath.toString();
-	}
-
-	public static class ParseOptionsException extends Exception {
-
-		private static final long serialVersionUID = -250326135439737607L;
-
-		private final JSAPResult parsedOptions;
-
-		public ParseOptionsException(JSAPResult parsedOptions) {
-			this.parsedOptions = parsedOptions;
-		}
-
-		public JSAPResult getParsedOptions() {
-			return this.parsedOptions;
-		}
 	}
 }

@@ -38,8 +38,8 @@ import eu.stratosphere.myriad.driver.parameters.SocketReaderParameters;
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
  */
 public class MyriadSocketReader {
-	
-	private static int BUFFER_SIZE = 65536; // 64K buffer 
+
+	private static int BUFFER_SIZE = 4194304; // 4MB buffer
 
 	private final String nodePath;
 
@@ -61,7 +61,7 @@ public class MyriadSocketReader {
 
 	private final Socket clientSocket;
 
-	private int heartBeatServerPort;
+	private final int heartBeatServerPort;
 
 	private final HttpServer heartBeatServer;
 
@@ -71,12 +71,12 @@ public class MyriadSocketReader {
 
 	private final Process dgenProcess;
 
-	private Thread dgenReaderThread;
+	private final Thread dgenReaderThread;
 
 	/**
 	 * Initializes MyriadSocketReader.
 	 * 
-	 * @param split
+	 * @param parameters
 	 */
 	public MyriadSocketReader(SocketReaderParameters parameters) {
 		// read input parameters from job config
@@ -87,16 +87,14 @@ public class MyriadSocketReader {
 		this.scalingFactor = parameters.getScalingFactor();
 		this.nodeCount = parameters.getNodeCount();
 		this.nodeID = parameters.getNodeID();
-		// compute derived parameters
-		this.serverSocketPort = 43000 + this.nodeID % 1000; // getOutputSocketPort();
-		this.heartBeatServerPort = 42000 + this.nodeID % 1000;
 
 		// open SocketReader server at input socket number
 		try {
-			this.serverSocket = new ServerSocket(this.serverSocketPort);
+			this.serverSocket = new ServerSocket(0);
+			this.serverSocketPort = this.serverSocket.getLocalPort();
 		} catch (IOException e) {
 			cleanup();
-			throw new RuntimeException("Myriad DGen: could not listen on port: " + this.serverSocketPort + ".");
+			throw new RuntimeException("Could not open reader server socket.");
 		}
 
 		// open heartbeat HTTP server
@@ -104,18 +102,18 @@ public class MyriadSocketReader {
 			this.heartBeatServer = HttpServer.create(new InetSocketAddress(this.heartBeatServerPort), 16);
 			this.heartBeatServer.createContext("/", new HeartBeatHandler());
 			this.heartBeatServer.start();
+			this.heartBeatServerPort = this.heartBeatServer.getAddress().getPort();
 		} catch (IOException e) {
 			cleanup();
-			throw new RuntimeException("Myriad DGen: could not open HeartBeat server on port: "
-				+ this.heartBeatServerPort + ".");
+			throw new RuntimeException("Could not open heart beat server socket.");
 		}
 
 		// start data generator process
 		try {
 			this.dgenProcess = Runtime.getRuntime().exec(getDGenCommand());
-		} catch (IOException e1) {
+		} catch (IOException e) {
 			cleanup();
-			throw new RuntimeException("Myriad Data Generator: failed to start data generator process.");
+			throw new RuntimeException("Failed to start data generator process.");
 		}
 
 		// create client socket from socket server
@@ -123,15 +121,16 @@ public class MyriadSocketReader {
 			this.clientSocket = this.serverSocket.accept();
 		} catch (IOException e) {
 			cleanup();
-			throw new RuntimeException("Myriad Data Generator: failed to open receiver socket.");
+			throw new RuntimeException("Failed to open receiver socket.");
 		}
 
 		// create input reader for client socket
 		try {
-			this.inputReader = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()), MyriadSocketReader.BUFFER_SIZE);
+			this.inputReader = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()),
+				MyriadSocketReader.BUFFER_SIZE);
 		} catch (IOException e) {
 			cleanup();
-			throw new RuntimeException("Myriad Data Generator: failed to open input stream.");
+			throw new RuntimeException("Failed to open input stream.");
 		}
 
 		// create reader thread for the process (ignores the stdout)
@@ -169,6 +168,19 @@ public class MyriadSocketReader {
 	 */
 	private void cleanup() {
 		try {
+			// wait for reader thread to close
+			if (this.dgenReaderThread != null) {
+				this.dgenReaderThread.join(3000); // give the dgen process three seconds to finish
+			}
+			// close dgen process
+			if (this.dgenProcess != null) {
+				try {
+					this.dgenProcess.exitValue(); // do nothing if already terminated
+				} catch (IllegalThreadStateException e) {
+					this.dgenProcess.waitFor();
+					// this.dgenProcess.destroy(); // else brute-force terminate
+				}
+			}
 			// close input stream
 			if (this.inputReader != null) {
 				this.inputReader.close();
@@ -177,13 +189,9 @@ public class MyriadSocketReader {
 			if (this.clientSocket != null) {
 				this.clientSocket.close();
 			}
-			// close dgen process
-			if (this.dgenProcess != null) {
-				this.dgenProcess.destroy();
-			}
 			// close heartbeat server
 			if (this.heartBeatServer != null) {
-				this.heartBeatServer.stop(3); // stop after 5 seconds
+				this.heartBeatServer.stop(0); // stop immediately
 			}
 			// close server socket
 			if (this.serverSocket != null) {
@@ -200,6 +208,7 @@ public class MyriadSocketReader {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private int getOutputSocketPort() {
 		MessageDigest m;
 		try {
@@ -224,6 +233,7 @@ public class MyriadSocketReader {
 	 */
 	private String getDGenCommand() {
 		StringBuffer sb = new StringBuffer();
+		sb.append("time --output=/tmp/").append(this.datasetID).append(".").append(this.nodeID).append(".txt ");
 		sb.append(this.nodePath).append(" ");
 		sb.append(" -s").append(this.scalingFactor);
 		sb.append(" -i").append(this.nodeID);

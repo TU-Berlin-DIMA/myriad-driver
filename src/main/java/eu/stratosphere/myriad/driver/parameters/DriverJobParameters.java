@@ -15,6 +15,9 @@
 package eu.stratosphere.myriad.driver.parameters;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
 
 /**
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
@@ -24,6 +27,8 @@ public class DriverJobParameters {
 	private final File dgenInstallDir;
 
 	private final File dgenNodePath;
+
+	private final File dgenNodePropertiesPath;
 
 	private final File outputBase;
 
@@ -37,10 +42,15 @@ public class DriverJobParameters {
 
 	private final short nodeCount;
 
-	public DriverJobParameters(File dgenInstallDir, File outputBase, String datasetID, String stage, double scalingFactor, short nodeCount) throws DriverJobParametersException {
+	private final Properties dgenNodeProperties;
+
+	public DriverJobParameters(File dgenInstallDir, File outputBase, String datasetID, String stage,
+			double scalingFactor, short nodeCount) throws DriverJobParametersException {
 		this.dgenInstallDir = dgenInstallDir;
 		this.dgenName = this.dgenInstallDir.getName();
 		this.dgenNodePath = new File(String.format("%s/bin/%s-node", this.dgenInstallDir, this.dgenName));
+		this.dgenNodePropertiesPath = new File(String.format("%s/config/%s-node.properties", this.dgenInstallDir,
+			this.dgenName));
 		this.outputBase = outputBase;
 		this.datasetID = datasetID;
 		this.stage = stage;
@@ -48,6 +58,8 @@ public class DriverJobParameters {
 		this.nodeCount = nodeCount;
 
 		validateParameters();
+
+		this.dgenNodeProperties = loadDGenNodeProperties(this.dgenNodePropertiesPath);
 	}
 
 	private void validateParameters() throws DriverJobParametersException {
@@ -55,9 +67,16 @@ public class DriverJobParameters {
 			throw new DriverJobParametersException("Data generator install dir `" + this.dgenInstallDir
 				+ "` does not exist.");
 		}
-		if (!this.dgenNodePath.isFile()) {
-			throw new DriverJobParametersException("Data generator executable node `" + this.dgenNodePath
+		if (!this.dgenNodePropertiesPath.isFile()) {
+			throw new DriverJobParametersException("Data genenerator properties file `" + this.dgenNodePath
 				+ "` does not exist.");
+		}
+		if (!this.dgenNodePath.isFile()) {
+			throw new DriverJobParametersException("Data genenerator executable `" + this.dgenNodePath
+				+ "` does not exist.");
+		}
+		if (!this.outputBase.isAbsolute()) {
+			throw new DriverJobParametersException("Base output path `" + this.outputBase + "` should be absolute.");
 		}
 		if (!this.outputBase.isAbsolute()) {
 			throw new DriverJobParametersException("Base output path `" + this.outputBase + "` should be absolute.");
@@ -97,6 +116,22 @@ public class DriverJobParameters {
 	}
 
 	public String getJobOutputPath() {
-		return String.format("%s/%s/%s", this.outputBase, this.datasetID, this.stage);
+		return String.format("%s/%s/%s", this.outputBase, this.datasetID, getOutputFile(this.stage));
+	}
+	
+	private String getOutputFile(String stage) {
+		return this.dgenNodeProperties.getProperty(String.format("generator.%s.output-file", stage), stage);
+	}
+
+	private static Properties loadDGenNodeProperties(File propertiesPath) {
+		Properties properties = new Properties();
+		try {
+			FileInputStream input = new FileInputStream(propertiesPath);
+			properties.load(input);
+			input.close();
+		} catch (IOException e) {
+			throw new DriverJobParametersException("Could not load data generator node properties: " + e.getMessage());
+		}
+		return properties;
 	}
 }
