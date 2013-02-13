@@ -65,12 +65,12 @@ public class MyriadInputFormat implements InputFormat<NullWritable, Text> {
 		return nodePath;
 	}
 
-	public static void setScalingFactor(JobConf conf, double scalingFactor) {
-		conf.setFloat("mapred.myriad.dgen.scaling.factor", (float) scalingFactor);
+	public static void setScalingFactor(JobConf conf, float scalingFactor) {
+		conf.setFloat("mapred.myriad.dgen.scaling.factor", scalingFactor);
 	}
 
-	public static double getScalingFactor(JobConf conf) {
-		double scalingFactor = conf.getFloat("mapred.myriad.dgen.scaling.factor", -1);
+	public static float getScalingFactor(JobConf conf) {
+		float scalingFactor = conf.getFloat("mapred.myriad.dgen.scaling.factor", -1);
 		if (scalingFactor <= 0) {
 			throw new IllegalArgumentException("Bad `mapred.myriad.dgen.scaling.factor` parameter value");
 		}
@@ -147,8 +147,8 @@ public class MyriadInputFormat implements InputFormat<NullWritable, Text> {
 		File outputBase = new File(MyriadInputFormat.getOutputBase(conf));
 		String datasetID = MyriadInputFormat.getDatasetID(conf);
 		String stage = MyriadInputFormat.getStage(conf);
-		double scalingFactor = MyriadInputFormat.getScalingFactor(conf);
+		float scalingFactor = MyriadInputFormat.getScalingFactor(conf);
 		short nodeCount = (short) MyriadInputFormat.getNodeCount(conf);
-		return new SocketReaderParameters(dgenInstallDir , outputBase, datasetID, stage, scalingFactor, nodeCount, nodeID);
+		return new SocketReaderParameters(dgenInstallDir, outputBase, datasetID, stage, scalingFactor, nodeCount, nodeID);
 	}
 }

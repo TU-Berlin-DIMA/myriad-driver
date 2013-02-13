@@ -38,14 +38,14 @@ public class DriverJobParameters {
 
 	private final String stage;
 
-	private final double scalingFactor;
+	private final float scalingFactor;
 
 	private final short nodeCount;
 
 	private final Properties dgenNodeProperties;
 
 	public DriverJobParameters(File dgenInstallDir, File outputBase, String datasetID, String stage,
-			double scalingFactor, short nodeCount) throws DriverJobParametersException {
+			float scalingFactor, short nodeCount) throws DriverJobParametersException {
 		this.dgenInstallDir = dgenInstallDir;
 		this.dgenName = this.dgenInstallDir.getName();
 		this.dgenNodePath = new File(String.format("%s/bin/%s-node", this.dgenInstallDir, this.dgenName));
@@ -107,7 +107,7 @@ public class DriverJobParameters {
 		return this.stage;
 	}
 
-	public double getScalingFactor() {
+	public float getScalingFactor() {
 		return this.scalingFactor;
 	}
 

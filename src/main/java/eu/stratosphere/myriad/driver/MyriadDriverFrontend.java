@@ -14,21 +14,21 @@
  **********************************************************************************************************************/
 package eu.stratosphere.myriad.driver;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.Iterator;
+import java.util.Arrays;
 
-import com.martiansoftware.jsap.FlaggedOption;
-import com.martiansoftware.jsap.JSAP;
-import com.martiansoftware.jsap.JSAPException;
-import com.martiansoftware.jsap.JSAPResult;
-import com.martiansoftware.jsap.UnflaggedOption;
-import com.martiansoftware.jsap.stringparsers.DoubleStringParser;
-import com.martiansoftware.jsap.stringparsers.FileStringParser;
-import com.martiansoftware.jsap.stringparsers.ShortStringParser;
-import com.martiansoftware.jsap.stringparsers.StringStringParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.PosixParser;
 
 import eu.stratosphere.myriad.driver.hadoop.MyriadDriverHadoopJob;
 import eu.stratosphere.myriad.driver.parameters.DriverJobParameters;
@@ -40,91 +40,58 @@ import eu.stratosphere.myriad.driver.parameters.DriverJobParametersFamily;
  */
 public class MyriadDriverFrontend {
 
-	private JSAP optionsParser = new JSAP();
+	private final Options options;
 
 	public MyriadDriverFrontend() {
-		initialize();
-	}
+		// dgen-install-dir
+		this.options = new Options();
 
-	/**
-	 * 
-	 */
-	private void initialize() {
-		try {
-			// dgen-install-dir
-			UnflaggedOption optDGenInstallDir = new UnflaggedOption("dgen-install-dir");
-			optDGenInstallDir.setStringParser(FileStringParser.getParser());
-			optDGenInstallDir.setRequired(true);
-			optDGenInstallDir.setHelp("absolute data generator installation directory");
-			this.optionsParser.registerParameter(optDGenInstallDir);
+		// scaling-factor
+		OptionBuilder.hasArg();
+		OptionBuilder.withArgName("double");
+		OptionBuilder.withDescription("scaling factor (s=1 generates 1GB)");
+		OptionBuilder.withLongOpt("scaling-factor");
+		this.options.addOption(OptionBuilder.create('s'));
 
-			// scaling-factor
-			FlaggedOption optScalingFactor = new FlaggedOption("scaling-factor");
-			optScalingFactor.setShortFlag('s');
-			optScalingFactor.setLongFlag("scaling-factor");
-			optScalingFactor.setStringParser(DoubleStringParser.getParser());
-			optScalingFactor.setRequired(true);
-			optScalingFactor.setDefault("1.0");
-			optScalingFactor.setHelp("scaling factor (s=1 generates 1GB)");
-			this.optionsParser.registerParameter(optScalingFactor);
+		// dataset-id
+		OptionBuilder.hasArg();
+		OptionBuilder.withArgName("string");
+		OptionBuilder.withDescription("ID of the generated Myriad dataset");
+		OptionBuilder.withLongOpt("dataset-id");
+		this.options.addOption(OptionBuilder.create('m'));
 
-			// dataset-id
-			FlaggedOption optDatasetID = new FlaggedOption("dataset-id");
-			optDatasetID.setShortFlag('m');
-			optDatasetID.setLongFlag("dataset-id");
-			optDatasetID.setStringParser(StringStringParser.getParser());
-			optDatasetID.setRequired(true);
-			optDatasetID.setDefault("default-dataset");
-			optDatasetID.setHelp("ID of the generated Myriad dataset");
-			this.optionsParser.registerParameter(optDatasetID);
+		// node-count
+		OptionBuilder.hasArg();
+		OptionBuilder.withArgName("int");
+		OptionBuilder.withDescription("degree of parallelism (i.e. total number of partitions)");
+		OptionBuilder.withArgName("node-count");
+		this.options.addOption(OptionBuilder.create('N'));
 
-			// node-count
-			FlaggedOption optNodeCount = new FlaggedOption("node-count");
-			optNodeCount.setShortFlag('N');
-			optNodeCount.setLongFlag("node-count");
-			optNodeCount.setStringParser(ShortStringParser.getParser());
-			optNodeCount.setRequired(true);
-			optNodeCount.setDefault("1");
-			optNodeCount.setHelp("degree of parallelism (i.e. total number of partitions)");
-			this.optionsParser.registerParameter(optNodeCount);
+		// output-base
+		OptionBuilder.hasArg();
+		OptionBuilder.withArgName("path");
+		OptionBuilder.withDescription("base path for writing the output");
+		OptionBuilder.withLongOpt("output-base");
+		this.options.addOption(OptionBuilder.create('o'));
 
-			// output-base
-			FlaggedOption optOutputBase = new FlaggedOption("output-base");
-			optOutputBase.setShortFlag('o');
-			optOutputBase.setLongFlag("output-base");
-			optOutputBase.setStringParser(FileStringParser.getParser());
-			optOutputBase.setRequired(true);
-			optOutputBase.setDefault("/tmp");
-			optOutputBase.setHelp("base path for writing the output");
-			this.optionsParser.registerParameter(optOutputBase);
-
-			// execute-stages
-			FlaggedOption optExecuteStages = new FlaggedOption("execute-stage");
-			optExecuteStages.setShortFlag('x');
-			optExecuteStages.setLongFlag("execute-stage");
-			optExecuteStages.setStringParser(StringStringParser.getParser());
-			optExecuteStages.setRequired(true);
-			optExecuteStages.setList(true);
-			optExecuteStages.setListSeparator(',');
-			optExecuteStages.setHelp("specify stages to be executed");
-			this.optionsParser.registerParameter(optExecuteStages);
-
-		} catch (JSAPException e) {
-			System.err.println("Could not construct JSAP options: " + e.getMessage());
-			System.exit(1);
-		}
+		// execute-stages
+		OptionBuilder.hasArgs();
+		OptionBuilder.withArgName("stagename");
+		OptionBuilder.withDescription("specify specific stages to be executed");
+		OptionBuilder.withLongOpt("execute-stage");
+		this.options.addOption(OptionBuilder.create('x'));
 	}
 
 	/**
 	 * @param args
 	 */
-	private void process(String[] args) throws ParseOptionsException {
+	private void process(String[] args) throws ParsedOptionsException, ParseException {
 		// parse options
-		JSAPResult parsedOptions = this.optionsParser.parse(args);
+		ParsedOptions parsedOptions = this.parseOptions(args);
 
 		// throw exception on parse failure
 		if (!parsedOptions.success()) {
-			throw new ParseOptionsException(parsedOptions);
+			throw new ParsedOptionsException(parsedOptions);
 		}
 
 		try {
@@ -146,6 +113,50 @@ public class MyriadDriverFrontend {
 	}
 
 	/**
+	 * @param args
+	 * @return
+	 */
+	private ParsedOptions parseOptions(String[] args) throws ParseException {
+		ParsedOptions parsedOptions = new ParsedOptions();
+
+		if (args.length < 1) {
+			throw new ParseException("Missing dgen-install-dir argument");
+		}
+
+		parsedOptions.setFile("dgen-install-dir", new File(args[0]));
+
+		// parse the command line arguments
+		CommandLineParser parser = new PosixParser();
+		CommandLine line = parser.parse(this.options, Arrays.copyOfRange(args, 1, args.length));
+
+		if (line.hasOption('x')) {
+			parsedOptions.setStringArray("execute-stage", line.getOptionValues('x'));
+		} else {
+			parsedOptions.setErrorMessage("execute-stage",
+				"You should provide at least one data generator stage to be executed");
+		}
+
+		try {
+			parsedOptions.setFloat("scaling-factor", Float.parseFloat(line.getOptionValue('s', "1.0")));
+		} catch (NumberFormatException e) {
+			parsedOptions.setErrorMessage("scaling-factor", e.getMessage());
+		}
+
+		try {
+			parsedOptions.setShort("node-count", Short.parseShort(line.getOptionValue('N', "1")));
+		} catch (NumberFormatException e) {
+			parsedOptions.setErrorMessage("node-count", e.getMessage());
+		}
+
+		parsedOptions.setString("dataset-id", line.getOptionValue('m', "default-dataset"));
+		parsedOptions.setFile("output-base", new File(line.getOptionValue('o', "/tmp")));
+
+		return parsedOptions;
+	}
+
+	/**
+	 * Factory method.
+	 * 
 	 * @param parameters
 	 * @return
 	 */
@@ -153,22 +164,28 @@ public class MyriadDriverFrontend {
 		return new MyriadDriverHadoopJob(parameters);
 	}
 
-	private void printErrors(PrintStream out, JSAPResult parsedOptions) {
-		@SuppressWarnings("rawtypes")
-		Iterator errs = parsedOptions.getErrorMessageIterator();
-		while (errs.hasNext()) {
-			out.println("Error: " + errs.next());
+	private void printErrors(PrintStream out, ParsedOptions parsedOptions) {
+		for (String message : parsedOptions.getErrorMessages()) {
+			out.println("Error: " + message);
 		}
 		out.println();
 	}
 
-	private void printUsage(PrintStream out) {
-		out.println("Usage: (hadoop|pact-client) jar myriad-driver-jobs.jar <dgen-install-dir> [OPTIONS]");
-		out.println();
+	private String getUsage() {
+		return "(hadoop|pact-client) jar myriad-driver-jobs.jar <dgen-dir> [OPTIONS]";
 	}
 
 	private void printHelp(PrintStream out) {
-		out.println(this.optionsParser.getHelp());
+		PrintWriter pw = new PrintWriter(out);
+		int width = 80;
+		int leftPad = 0;
+		int descPad = 2;
+
+		HelpFormatter formatter = new HelpFormatter();
+		formatter.setSyntaxPrefix("Usage: ");
+		formatter.printHelp(pw, width, getUsage(), "\nAvailable Options:\n \n", this.options, leftPad, descPad, null, false);
+
+		pw.flush();
 	}
 
 	public static void main(String[] args) {
@@ -176,9 +193,13 @@ public class MyriadDriverFrontend {
 
 		try {
 			frontend.process(args);
-		} catch (ParseOptionsException e) {
+		} catch (ParseException e) {
+			System.err.println("Could not parse command line string");
+			System.err.println();
+			frontend.printHelp(System.err);
+			System.exit(1);
+		} catch (ParsedOptionsException e) {
 			frontend.printErrors(System.err, e.getParsedOptions());
-			frontend.printUsage(System.err);
 			frontend.printHelp(System.err);
 			System.exit(1);
 		}

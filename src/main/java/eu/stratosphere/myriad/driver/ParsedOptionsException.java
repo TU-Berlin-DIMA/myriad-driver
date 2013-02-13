@@ -14,19 +14,17 @@
  **********************************************************************************************************************/
 package eu.stratosphere.myriad.driver;
 
-import com.martiansoftware.jsap.JSAPResult;
-
-public class ParseOptionsException extends Exception {
+public class ParsedOptionsException extends Exception {
 
 	private static final long serialVersionUID = -250326135439737607L;
 
-	private final JSAPResult parsedOptions;
+	private final ParsedOptions parsedOptions;
 
-	public ParseOptionsException(JSAPResult parsedOptions) {
+	public ParsedOptionsException(ParsedOptions parsedOptions) {
 		this.parsedOptions = parsedOptions;
 	}
 
-	public JSAPResult getParsedOptions() {
+	public ParsedOptions getParsedOptions() {
 		return this.parsedOptions;
 	}
 }

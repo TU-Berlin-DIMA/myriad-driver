@@ -17,21 +17,21 @@ package eu.stratosphere.myriad.driver.parameters;
 import java.io.File;
 import java.util.Iterator;
 
-import com.martiansoftware.jsap.JSAPResult;
+import eu.stratosphere.myriad.driver.ParsedOptions;
 
 /**
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
  */
 public class DriverJobParametersFamily implements Iterable<DriverJobParameters> {
 
-	private JSAPResult parsedOptions;
+	private ParsedOptions parsedOptions;
 
 	/**
 	 * Initializes DriverJobParametersIterator.
 	 * 
 	 * @param parsedOptions
 	 */
-	public DriverJobParametersFamily(JSAPResult parsedOptions) {
+	public DriverJobParametersFamily(ParsedOptions parsedOptions) {
 		this.parsedOptions = parsedOptions;
 	}
 
@@ -47,13 +47,17 @@ public class DriverJobParametersFamily implements Iterable<DriverJobParameters> 
 	private static class DriverJobParametersIterator implements Iterator<DriverJobParameters> {
 
 		private final File dgenInstallDir;
+
 		private final File outputBase;
+
 		private final String datasetID;
-		private final double scalingFactor;
+
+		private final float scalingFactor;
+
 		private final short nodeCount;
 
 		private final String[] stages;
-		
+
 		private int currentStage;
 
 		/**
@@ -61,11 +65,11 @@ public class DriverJobParametersFamily implements Iterable<DriverJobParameters> 
 		 * 
 		 * @param parsedOptions
 		 */
-		public DriverJobParametersIterator(JSAPResult parsedOptions) {
+		public DriverJobParametersIterator(ParsedOptions parsedOptions) {
 			this.dgenInstallDir = parsedOptions.getFile("dgen-install-dir").getAbsoluteFile();
 			this.outputBase = parsedOptions.getFile("output-base");
 			this.datasetID = parsedOptions.getString("dataset-id");
-			this.scalingFactor = parsedOptions.getDouble("scaling-factor");
+			this.scalingFactor = parsedOptions.getFloat("scaling-factor");
 			this.nodeCount = parsedOptions.getShort("node-count");
 			this.stages = parsedOptions.getStringArray("execute-stage");
 			this.currentStage = 0;
@@ -86,7 +90,8 @@ public class DriverJobParametersFamily implements Iterable<DriverJobParameters> 
 		 */
 		@Override
 		public DriverJobParameters next() {
-			return new DriverJobParameters(this.dgenInstallDir, this.outputBase, this.datasetID, this.stages[this.currentStage++], this.scalingFactor, this.nodeCount);
+			return new DriverJobParameters(this.dgenInstallDir, this.outputBase, this.datasetID,
+				this.stages[this.currentStage++], this.scalingFactor, this.nodeCount);
 		}
 
 		/*

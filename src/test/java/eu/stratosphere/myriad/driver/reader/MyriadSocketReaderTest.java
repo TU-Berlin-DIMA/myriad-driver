@@ -38,12 +38,11 @@ public class MyriadSocketReaderTest {
 		File outputBase = new File("/tmp");
 		String datasetID = "wordcount-gen-sf0001";
 		String stage = "token";
-		double scalingFactor = 1.0;
-		short nodeCount = 1;
-		short nodeID = 0;
+		float sf = 1.0f;
+		short N = 1;
+		short i = 0;
 
-		this.socketReaderParameters = new SocketReaderParameters(dgenInstallDir, outputBase, datasetID, stage,
-			scalingFactor, nodeCount, nodeID);
+		this.socketReaderParameters = new SocketReaderParameters(dgenInstallDir, outputBase, datasetID, stage, sf, N, i);
 	}
 
 	@Test

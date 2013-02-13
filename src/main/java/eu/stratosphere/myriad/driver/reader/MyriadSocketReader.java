@@ -19,18 +19,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.mortbay.jetty.Request;
+import org.mortbay.jetty.Server;
+import org.mortbay.jetty.handler.AbstractHandler;
 
 import eu.stratosphere.myriad.driver.parameters.SocketReaderParameters;
 
@@ -38,7 +38,7 @@ import eu.stratosphere.myriad.driver.parameters.SocketReaderParameters;
  * @author Alexander Alexandrov (alexander.alexandrov@tu-berlin.de)
  */
 public class MyriadSocketReader {
-
+	
 	private static int BUFFER_SIZE = 4194304; // 4MB buffer
 
 	private final String nodePath;
@@ -63,7 +63,7 @@ public class MyriadSocketReader {
 
 	private final int heartBeatServerPort;
 
-	private final HttpServer heartBeatServer;
+	private final Server heartBeatServer;
 
 	private final BufferedReader inputReader;
 
@@ -99,11 +99,12 @@ public class MyriadSocketReader {
 
 		// open heartbeat HTTP server
 		try {
-			this.heartBeatServer = HttpServer.create(new InetSocketAddress(this.heartBeatServerPort), 16);
-			this.heartBeatServer.createContext("/", new HeartBeatHandler());
+			org.mortbay.log.Log.setLog(null); // disable the jetty log
+			this.heartBeatServer = new Server(0);
+			this.heartBeatServer.setHandler(new HeartBeatHandler());
 			this.heartBeatServer.start();
-			this.heartBeatServerPort = this.heartBeatServer.getAddress().getPort();
-		} catch (IOException e) {
+			this.heartBeatServerPort = this.heartBeatServer.getConnectors()[0].getLocalPort();
+		} catch (Exception e) {
 			cleanup();
 			throw new RuntimeException("Could not open heart beat server socket.");
 		}
@@ -191,7 +192,7 @@ public class MyriadSocketReader {
 			}
 			// close heartbeat server
 			if (this.heartBeatServer != null) {
-				this.heartBeatServer.stop(0); // stop immediately
+				this.heartBeatServer.setGracefulShutdown(1000); // stop after 1 second
 			}
 			// close server socket
 			if (this.serverSocket != null) {
@@ -264,25 +265,36 @@ public class MyriadSocketReader {
 		}
 	}
 
-	private class HeartBeatHandler implements HttpHandler {
+	private class HeartBeatHandler extends AbstractHandler {
 
-		private final Pattern pattern = Pattern.compile("progress=([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)");
-
+		/*
+		 * (non-Javadoc)
+		 * @see org.mortbay.jetty.Handler#handle(java.lang.String, javax.servlet.http.HttpServletRequest,
+		 * javax.servlet.http.HttpServletResponse, int)
+		 */
 		@Override
-		public void handle(HttpExchange exchange) throws IOException {
-			if ("HEAD".equals(exchange.getRequestMethod())) {
-				// get the HTTP query string
-				String query = exchange.getRequestURI().getRawQuery();
-				// update the progress variable if the parameter matches
-				Matcher m = this.pattern.matcher(query);
-				if (m.find()) {
-					synchronized (MyriadSocketReader.this.dgenProcess) {
-						MyriadSocketReader.this.dgenProgress = Float.parseFloat(m.group(1));
-					}
+		public void handle(String target, HttpServletRequest request, HttpServletResponse response, int dispatch)
+				throws IOException, ServletException {
+			if ("HEAD".equals(request.getMethod())) {
+				float progress;
+				try {
+					progress = Float.parseFloat(request.getParameter("progress"));
+				} catch (NumberFormatException e) {
+					progress = -1;
 				}
+
+				if (progress != -1) {
+					synchronized (MyriadSocketReader.this.dgenProcess) {
+						MyriadSocketReader.this.dgenProgress = progress;
+					}
+					System.out.println("Progress is now " + MyriadSocketReader.this.dgenProgress);
+				}
+
 				// write the response
-				exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, -1);
-				exchange.close();
+				response.setStatus(HttpServletResponse.SC_OK);
+				if (request instanceof Request) {
+					((Request) request).setHandled(true);
+				}
 			}
 		}
 	}

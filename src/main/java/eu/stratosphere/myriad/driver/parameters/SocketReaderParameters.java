@@ -31,7 +31,7 @@ public class SocketReaderParameters extends DriverJobParameters {
 	 * @param stage
 	 * @throws DriverJobParametersException
 	 */
-	public SocketReaderParameters(File dgenInstallDir, File outputBase, String datasetID, String stage, double scalingFactor, short nodeCount, short nodeID) throws DriverJobParametersException {
+	public SocketReaderParameters(File dgenInstallDir, File outputBase, String datasetID, String stage, float scalingFactor, short nodeCount, short nodeID) throws DriverJobParametersException {
 		super(dgenInstallDir, outputBase, datasetID, stage, scalingFactor, nodeCount);
 		this.nodeID = nodeID;
 	}
